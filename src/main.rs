@@ -1,4 +1,5 @@
-// run  := cargo run --
+// comp := cargo build
+// run  := sudo ../target/debug/dashboard-motd -c /home/jyh/.config/motd.toml
 // dir  := .
 // kid  :=
 

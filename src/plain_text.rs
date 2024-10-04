@@ -1,4 +1,5 @@
-// run  := cargo run --
+// comp := cargo build
+// run  := sudo ../target/debug/dashboard-motd -c /home/jyh/.config/motd.toml
 // dir  := .
 // kid  :=
 
@@ -17,6 +18,7 @@ const PADDING_MEMORY: usize = 12;
 
 pub fn generate_text(config: &Config, stats: &SystemStats) -> String {
     let mut text = String::new();
+    text += "\n";
 
     if config.memory {
         writeln!(
@@ -69,7 +71,7 @@ pub fn generate_text(config: &Config, stats: &SystemStats) -> String {
         for (name, temp) in &stats.cpu_temp {
             writeln!(
                 &mut text,
-                "{:<padb$}{:<pada$}{:2} °C",
+                "{:<padb$}{:<pada$}{:.2} °C",
                 "",
                 name,
                 *temp as f64 / 1000.0,
@@ -187,7 +189,7 @@ pub fn generate_text(config: &Config, stats: &SystemStats) -> String {
         )
         .unwrap();
     }
-    if !stats.vms.is_empty() { writeln!(&mut text).unwrap() };
-    to_bold(text.as_str())
+
+    text
 }
 
