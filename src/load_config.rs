@@ -11,12 +11,12 @@ fn default_true() -> bool { true }
 
 fn default_none() -> String { "none".to_string() }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct SysService {
     #[serde(default = "default_none")]
-    pub name:     String,
+    pub name:    String,
     #[serde(default = "default_none")]
-    pub display:  String,
+    pub display: String
 }
 
 #[derive(Deserialize)]
@@ -24,7 +24,7 @@ pub struct SysDocker {
     #[serde(default = "default_none")]
     pub name:    String,
     #[serde(default = "default_none")]
-    pub display: String,
+    pub display: String
 }
 
 #[derive(Deserialize)]
@@ -43,6 +43,16 @@ pub struct SysVm {
     pub name:    String,
     #[serde(default = "default_none")]
     pub display: String
+}
+
+#[derive(Deserialize)]
+pub struct SysGpu {
+    #[serde(default = "default_none")]
+    pub command: String,
+    #[serde(default = "default_none")]
+    pub memdisplay: String,
+    #[serde(default = "default_none")]
+    pub tempdisplay: String
 }
 
 #[derive(Deserialize)]
@@ -72,7 +82,10 @@ pub struct Config {
     pub docker: Vec<SysDocker>,
 
     #[serde(default)]
-    pub vm: Vec<SysVm>
+    pub vm: Vec<SysVm>,
+
+    #[serde(default)]
+    pub gpu: Vec<SysGpu>
 }
 
 pub struct LoadConfig {
@@ -117,4 +130,3 @@ impl LoadConfig {
 
     pub fn get_config(&self) -> &Config { &self.config }
 }
-

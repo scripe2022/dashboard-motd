@@ -17,7 +17,7 @@ use libc::{statvfs, statvfs as statvfs_t};
 use regex::Regex;
 use serde_json::Value;
 
-use crate::load_config::{Config, SysDisk, SysDocker, SysService, SysVm};
+use crate::load_config::{Config, SysDisk, SysDocker, SysGpu, SysService, SysVm};
 use crate::utils::str2byte;
 
 #[derive(Debug)]
@@ -79,6 +79,15 @@ pub struct VmInfo {
 }
 
 #[derive(Debug)]
+pub struct GpuInfo {
+    pub mem_name:   String,
+    pub temp_name:  String,
+    pub temp:       u64,
+    pub used_vram:  u64,
+    pub total_vram: u64
+}
+
+#[derive(Debug)]
 pub struct SystemStats {
     pub memory:     MemInfo,
     pub load_avg:   LoadAvgInfo,
@@ -88,7 +97,8 @@ pub struct SystemStats {
     pub disks:      Vec<DiskInfo>,
     pub services:   Vec<Service>,
     pub dockers:    Vec<Docker>,
-    pub vms:        Vec<VmInfo>
+    pub vms:        Vec<VmInfo>,
+    pub gpus:       Vec<GpuInfo>
 }
 
 pub fn get_memory() -> io::Result<MemInfo> {
@@ -423,9 +433,44 @@ fn get_vms(vms_config: &Vec<SysVm>) -> Vec<VmInfo> {
     vms
 }
 
+fn get_nvidia_smi(gpu_config: &SysGpu) -> io::Result<GpuInfo> {
+    let output = Command::new("nvidia-smi")
+        .arg("--query-gpu=memory.used,memory.total,temperature.gpu")
+        .arg("--format=csv,noheader,nounits")
+        .output()?;
+    if !output.status.success() {
+        return Err(io::Error::new(io::ErrorKind::Other, String::from_utf8_lossy(&output.stderr).to_string()));
+    }
+    let output_str = String::from_utf8_lossy(&output.stdout);
+    let mut gpu_info = GpuInfo { mem_name: "VRAM".to_string(), temp_name: "GPU Core".to_string(), temp: 0, used_vram: 0, total_vram: 0 };
+    let lines: Vec<&str> = output_str.lines().collect();
+    if let Some(line) = lines.get(gpu_config.command.parse::<usize>().unwrap_or(0)) {
+        let parts: Vec<&str> = line.split(',').collect();
+        if parts.len() == 3 {
+            gpu_info.mem_name = if gpu_config.memdisplay != "none" { &gpu_config.memdisplay } else { "VRAM" }.to_string();
+            gpu_info.temp_name = if gpu_config.tempdisplay != "none" { &gpu_config.tempdisplay } else { "GPU Core" }.to_string();
+            gpu_info.used_vram = parts[0].trim().parse::<u64>().unwrap_or(0) * 1024 * 1024;
+            gpu_info.total_vram = parts[1].trim().parse::<u64>().unwrap_or(0) * 1024 * 1024;
+            gpu_info.temp = parts[2].trim().parse::<u64>().unwrap_or(0);
+        }
+    }
+    Ok(gpu_info)
+}
+
+fn get_gpus(gpus_config: &Vec<SysGpu>) -> Vec<GpuInfo> {
+    let mut gpus: Vec<GpuInfo> = Vec::new();
+    for gpu in gpus_config {
+        if gpu.command == "nvidia-smi" {
+            if let Ok(gpu_info) = get_nvidia_smi(gpu) {
+                gpus.push(gpu_info);
+            }
+        }
+    }
+    gpus
+}
+
 impl SystemStats {
     pub fn new(config: &Config) -> Self {
-        // println!("{:?}", config);
         let memory = get_memory().unwrap_or_else(|e| {
             eprintln!("Failed to get memory information: {}", e);
             std::process::exit(1);
@@ -439,8 +484,9 @@ impl SystemStats {
         let cpu_temp = get_cpu_temp(&config.cputemp).unwrap_or_default();
         let disks = get_disks(&config.disk);
         let vms = get_vms(&config.vm);
+        let gpus = get_gpus(&config.gpu);
 
-        Self { memory, load_avg, cpu_temp, uptime, last_login, disks, services, dockers, vms }
+        Self { memory, load_avg, cpu_temp, uptime, last_login, disks, services, dockers, vms, gpus }
     }
 
     // pub fn update(&mut self) -> &mut Self {

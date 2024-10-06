@@ -44,8 +44,24 @@ pub fn generate_text(config: &Config, stats: &SystemStats) -> String {
             pada = PADDING_AFTER
         )
         .unwrap();
-        writeln!(&mut text).unwrap();
     }
+
+    for gpu in &stats.gpus {
+        writeln!(
+            &mut text,
+            "{:<padb$}{:<pada$}{} / {}",
+            "",
+            gpu.mem_name,
+            byte2str(gpu.used_vram, true),
+            byte2str(gpu.total_vram, true),
+            padb = PADDING_BEFORE,
+            pada = PADDING_AFTER
+        )
+        .unwrap();
+    }
+    if !stats.gpus.is_empty() || config.memory {
+        writeln!(&mut text).unwrap()
+    };
 
     if config.cpuload {
         writeln!(
@@ -80,8 +96,22 @@ pub fn generate_text(config: &Config, stats: &SystemStats) -> String {
             )
             .unwrap();
         }
-        writeln!(&mut text).unwrap();
     }
+    for gpu in &stats.gpus {
+        writeln!(
+            &mut text,
+            "{:<padb$}{:<pada$}{:.2} °C",
+            "",
+            gpu.temp_name,
+            gpu.temp as f64,
+            padb = PADDING_BEFORE,
+            pada = PADDING_AFTER
+        )
+        .unwrap();
+    }
+    if !stats.cpu_temp.is_empty() || !stats.gpus.is_empty() {
+        writeln!(&mut text).unwrap()
+    };
 
     if config.uptime {
         writeln!(
@@ -137,7 +167,9 @@ pub fn generate_text(config: &Config, stats: &SystemStats) -> String {
             .unwrap();
         }
     }
-    if !stats.disks.is_empty() { writeln!(&mut text).unwrap() };
+    if !stats.disks.is_empty() {
+        writeln!(&mut text).unwrap()
+    };
 
     // Services
     for service in &stats.services {
@@ -155,7 +187,9 @@ pub fn generate_text(config: &Config, stats: &SystemStats) -> String {
         )
         .unwrap();
     }
-    if !stats.services.is_empty() { writeln!(&mut text).unwrap() };
+    if !stats.services.is_empty() {
+        writeln!(&mut text).unwrap()
+    };
 
     // Dockers
     for docker in &stats.dockers {
@@ -171,7 +205,9 @@ pub fn generate_text(config: &Config, stats: &SystemStats) -> String {
         )
         .unwrap();
     }
-    if !stats.dockers.is_empty() { writeln!(&mut text).unwrap() };
+    if !stats.dockers.is_empty() {
+        writeln!(&mut text).unwrap()
+    };
 
     for vm in &stats.vms {
         writeln!(
@@ -192,4 +228,3 @@ pub fn generate_text(config: &Config, stats: &SystemStats) -> String {
 
     text
 }
-
